@@ -7,7 +7,7 @@ import (
 )
 
 type citiesResponse struct {
-	//test
+	
 	Cities []string `json:"cities"` // Cities capitalised to export it, otherwise json encoder will ignore it.
 }
 
