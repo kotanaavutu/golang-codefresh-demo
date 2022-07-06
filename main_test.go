@@ -1,17 +1,17 @@
 package main
 
-import (
-	"net/http"
-	"net/http/httptest"
-	"testing"
-)
+import "testing"
 
-func TestHandleIndexReturnsWithStatusOK(t *testing.T) {
-	request, _ := http.NewRequest("GET", "/", nil)
-	response := httptest.NewRecorder()
+func TestGreetingSpecific(t *testing.T) {
+	greeting := CreateGreeting("John")
+	if greeting != "Hello, John\n" {
+		t.Errorf("Greeting was incorrect, got: %s, want: %s.", greeting, "Hello, John\n")
+	}
+}
 
-	cityHandler(response, request)
-	if response.Code != http.StatusOK {
-		t.Fatalf("Non-expected status code%v:\n\tbody: %v", "200", response.Code)
+func TestGreetingDefault(t *testing.T) {
+	greeting := CreateGreeting("")
+	if greeting != "Hello, Guest\n" {
+		t.Errorf("Greeting was incorrect, got: %s, want: %s.", greeting, "Hello, Guest\n")
 	}
 }

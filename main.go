@@ -1,34 +1,68 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/gorilla/mux"
 )
 
-type citiesResponse struct {
-	
-	Cities []string `json:"cities"` // Cities capitalised to export it, otherwise json encoder will ignore it.
+func handler(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	name := query.Get("name")
+	log.Printf("Received request for %s\n", name)
+	w.Write([]byte(CreateGreeting(name)))
 }
 
-func cityHandler(res http.ResponseWriter, req *http.Request) {
-	cities := citiesResponse{
-		Cities: []string{"Amsterdam", "Berlin", "New York", "San Francisco", "Tokyo"}}
-
-	res.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(res).Encode(cities)
-}
-
-func defaultHandler(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	res.Write([]byte("Hello World!!"))
+func CreateGreeting(name string) string {
+	if name == "" {
+		name = "Guest"
+	}
+	return "Hello, " + name + "\n"
 }
 
 func main() {
-	http.HandleFunc("/", defaultHandler)
-	http.HandleFunc("/cities.json", cityHandler)
-	err := http.ListenAndServe(":5000", nil)
-	if err != nil {
-		log.Fatal("Unable to listen on port 5000 : ", err)
+	// Create Server and Route Handlers
+	r := mux.NewRouter()
+
+	r.HandleFunc("/", handler)
+
+	srv := &http.Server{
+		Handler:      r,
+		Addr:         ":8080",
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
+
+	// Start Server
+	go func() {
+		log.Println("Starting Server")
+		if err := srv.ListenAndServe(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	// Graceful Shutdown
+	waitForShutdown(srv)
+}
+
+func waitForShutdown(srv *http.Server) {
+	interruptChan := make(chan os.Signal, 1)
+	signal.Notify(interruptChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	// Block until we receive our signal.
+	<-interruptChan
+
+	// Create a deadline to wait for.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	srv.Shutdown(ctx)
+
+	log.Println("Shutting down")
+	os.Exit(0)
 }
